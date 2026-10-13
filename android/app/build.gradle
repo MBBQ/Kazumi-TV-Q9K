@@ -1,0 +1,108 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+def signingStore = System.getenv('KAZUMI_SIGNING_STORE')
+def signingPassword = System.getenv('KAZUMI_SIGNING_PASSWORD')
+def hasReleaseSigning = signingStore != null && !signingStore.trim().isEmpty() &&
+        signingPassword != null && !signingPassword.trim().isEmpty()
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+if (flutterVersionCode == null) {
+    flutterVersionCode = '1'
+}
+
+def flutterVersionName = localProperties.getProperty('flutter.versionName')
+if (flutterVersionName == null) {
+    flutterVersionName = '1.0'
+}
+
+android {
+    namespace "com.example.kazumi"
+    compileSdk flutter.compileSdkVersion
+    // Use the highest NDK required by the native plugins. Newer NDKs remain
+    // backward compatible with plugins that declare an older version.
+    ndkVersion "28.2.13676358"
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+
+    defaultConfig {
+        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        applicationId "com.local.kazumi.q9k"
+        // You can update the following values to match your application needs.
+        // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
+        minSdkVersion 29
+        targetSdkVersion flutter.targetSdkVersion
+        // Keep transitive plugins from advertising an incomplete x86_64 build.
+        ndk {
+            abiFilters.clear()
+            abiFilters "armeabi-v7a", "arm64-v8a"
+        }
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
+    }
+
+    signingConfigs {
+        q9k {
+            if (hasReleaseSigning) {
+                storeFile file(signingStore)
+                storePassword signingPassword
+                keyAlias 'kazumi-q9k'
+                keyPassword signingPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // Public source builds use the standard debug key. Release
+            // maintainers can set both signing variables to produce an
+            // update-compatible APK with the private project key.
+            signingConfig hasReleaseSigning ? signingConfigs.q9k : signingConfigs.debug
+        }
+    }
+}
+
+flutter {
+    source '../..'
+}
+
+dependencies {}
+
+// F-droid splits APKs by ABI, and requires different versionCode for each ABI.
+// For flutter version X.Y.Z, version code is X0Y0ZA, where A is the ABI code.
+// See:
+// * https://developer.android.com/build/gradle-tips
+// * https://developer.android.com/studio/build/configure-apk-splits
+// * https://gitlab.com/fdroid/fdroiddata/-/blob/master/metadata/im.nfc.nfsee.yml
+ext.abiCodes = ["armeabi-v7a": 1, "arm64-v8a": 2, "x86_64": 4]
+import com.android.build.OutputFile
+android.applicationVariants.all { variant ->
+    variant.outputs.each { output ->
+        def abiVersionCode = project.ext.abiCodes.get(output.getFilter(OutputFile.ABI))
+        if (abiVersionCode != null) {
+            output.versionCodeOverride = variant.versionCode * 10 + abiVersionCode
+        }
+    }
+}

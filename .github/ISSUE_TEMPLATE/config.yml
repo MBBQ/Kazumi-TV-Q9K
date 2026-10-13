@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: TV 操作说明与已知限制
+    url: https://github.com/MBBQ/Kazumi-TV-Q9K/blob/main/README_Q9K.md
+    about: 请先查看遥控器操作、安装要求及已知问题；本分支反馈由本仓库处理。
